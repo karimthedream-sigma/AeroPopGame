@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AeroPop</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #70c5ce;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    h1 {
+      font-weight: bold;
+      font-size: 48px;
+      color: #fff;
+      margin: 20px 0;
+      font-family: 'Arial', sans-serif;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #70c5ce;
+      border: 2px solid #000;
+    }
+    #replayBtn {
+      display: none;
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      background-color: #ffdf00;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>AeroPop</h1>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <button id="replayBtn" onclick="resetGame()">Replay</button>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const birdImage = new Image();
+    birdImage.src = 'https://upload.wikimedia.org/wikipedia/en/0/0b/Flappy_Bird_icon.png'; // Replace this URL with any custom bird image URL
+
+    let bird = {
+      x: 80,
+      y: 200,
+      width: 34,
+      height: 24,
+      gravity: 0.6,
+      lift: -10,
+      velocity: 0,
+      draw() {
+        ctx.drawImage(birdImage, this.x, this.y, this.width, this.height);
+      },
+      update() {
+        this.velocity += this.gravity;
+        this.y += this.velocity;
+      },
+      flap() {
+        this.velocity = this.lift;
+      },
+      reset() {
+        this.y = 200;
+        this.velocity = 0;
+      }
+    };
+
+    let pipes = [];
+    let score = 0;
+    let gameOver = false;
+
+    // Function to send score to Thunkable
+    function sendScoreToThunkable() {
+        window.parent.postMessage({ type: 'score', score: score }, '*');
+    }
+
+    function loop() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      bird.update();
+      bird.draw();
+
+      if (score % 10 === 0) { sendScoreToThunkable(); }
+
+      requestAnimationFrame(loop);
+    }
+
+    // Listen for messages from Thunkable
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'flap') {
+        bird.flap();
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.code === 'Space') {
+        bird.flap();
+      }
+    });
+
+    canvas.addEventListener('click', function () {
+      bird.flap();
+    });
+
+    birdImage.onload = function() {
+      loop();
+    };
+  </script>
+</body>
+</html>
