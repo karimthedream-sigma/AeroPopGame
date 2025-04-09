@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AeroPop</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #70c5ce;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    h1 {
+      font-weight: bold;
+      font-size: 48px;
+      color: #fff;
+      margin: 20px 0;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #70c5ce;
+      border: 2px solid #000;
+    }
+    #replayBtn {
+      display: none;
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      background-color: #ffdf00;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .score {
+      font-size: 24px;
+      color: white;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>AeroPop</h1>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <button id="replayBtn" onclick="resetGame()">Replay</button>
+  <div class="score" id="scoreDisplay">Score: 0</div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const birdImage = new Image();
+    birdImage.src = 'https://upload.wikimedia.org/wikipedia/en/0/0b/Flappy_Bird_icon.png'; // Replace this URL with any custom bird image URL
+
+    let bird = {
+      x: 80,
+      y: 200,
+      width: 34,
+      height: 24,
+      gravity: 0.6,
+      lift: -10,
+      velocity: 0,
+      draw() {
+        ctx.drawImage(birdImage, this.x, this.y, this.width, this.height);
+      },
+      update() {
+        this.velocity += this.gravity;
+        this.y += this.velocity;
+      },
+      flap() {
+        this.velocity = this.lift;
+      },
+      reset() {
+        this.y = 200;
+        this.velocity = 0;
+      }
+    };
+
+    let pipes = [];
+    let score = 0;
+    let gameOver = false;
+
+    // Function to generate pipes
+    function createPipe() {
+      const pipeHeight = Math.floor(Math.random() * (canvas.height / 2));
+      pipes.push({
+        x: canvas.width,
+        top: pipeHeight,
+        bottom: canvas.height - pipeHeight - 150,
+        width: 50,
+        speed: 3
+      });
+    }
+
+    // Function to draw pipes
+    function drawPipes() {
+      for (let i = 0; i < pipes.length; i++) {
+        let p = pipes[i];
+        ctx.fillStyle = 'green';
+        ctx.fillRect(p.x, 0, p.width, p.top); // Top pipe
+        ctx.fillRect(p.x, canvas.height - p.bottom, p.width, p.bottom); // Bottom pipe
+        p.x -= p.speed;
+      }
+    }
+
+    // Function to detect collisions
+    function checkCollisions() {
+      // Check for collision with pipes
+      for (let i = 0; i < pipes.length; i++) {
+        let p = pipes[i];
+        if (
+          bird.x + bird.width > p.x &&
+          bird.x < p.x + p.width &&
+          (bird.y < p.top || bird.y + bird.height > canvas.height - p.bottom)
+        ) {
+          gameOver = true;
+        }
+      }
+
+      // Check for collision with the ground or top of the screen
+      if (bird.y + bird.height >= canvas.height || bird.y <= 0) {
+        gameOver = true;
+      }
+    }
+
+    // Update score
+    function updateScore() {
+      pipes = pipes.filter(p => p.x + p.width > 0); // Remove off-screen pipes
+      if (pipes.length > 0 && pipes[0].x + pipes[0].width < bird.x) {
+        score++;
+        document.getElementById('scoreDisplay').innerText = 'Score: ' + score;
+      }
+    }
+
+    // Function to reset the game
+    function resetGame() {
+      bird.reset();
+      pipes = [];
+      score = 0;
+      gameOver = false;
+      document.getElementById('replayBtn').style.display = 'none';
+      document.getElementById('scoreDisplay').innerText = 'Score: ' + score;
+      loop();
+    }
+
+    function loop() {
+      if (gameOver) {
+        document.getElementById('replayBtn').style.display = 'block';
+        return;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      bird.update();
+      bird.draw();
+      drawPipes();
+      checkCollisions();
+      updateScore();
+
+      // Create new pipes every 100 frames
+      if (score % 100 === 0) {
+        createPipe();
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    // Listen for messages from Thunkable
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'flap') {
+        bird.flap();
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.code === 'Space' && !gameOver) {
+        bird.flap();
+      }
+    });
+
+    canvas.addEventListener('click', function () {
+      if (!gameOver) {
+        bird.flap();
+      }
+    });
+
+    birdImage.onload = function() {
+      loop();
+    };
+  </script>
+</body>
+</html>
